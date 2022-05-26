@@ -1,0 +1,146 @@
+/*
+ * 
+ *  QUESTO È UN MODELLO (ISTANZA DI METAMODELLO QAK)
+ * 
+ * 	definito dall'ANALISITA DEL PROBLEMA
+ * 
+ * 
+ * ===============================================================================
+ */
+
+
+
+System basic_robot_system
+
+Dispatch 	cmd : cmd(MOVE)
+Request 	step : step( TIME )
+Reply		stepdone : stepdone(V)
+Reply		stepfail : stepfail(DT, REASON)
+Event		sonar	 : sonar(DISTANCE,NAME)
+
+
+Context ctx_basic_robot ip [host="127.0.0.1" port=8020]
+// Context ctx_gui ip [host="localhost" port=8021]
+
+
+QActor basic_robot context ctx_basic_robot{
+	
+	[# var fail_step_when_10  = 0 #]
+	State s0 initial {
+		
+		// printCurrentMessage
+		
+		
+	}
+	Transition t0 whenMsg cmd -> handle_cmd
+				  whenRequest step -> handle_step
+	
+	
+	State handle_cmd {
+		
+		printCurrentMessage
+	}
+	
+	Goto s0
+	
+	
+	State handle_step {
+		
+		printCurrentMessage
+		
+		
+		[# fail_step_when_10 ++ #]
+		if [# fail_step_when_10 <10 #]
+		{
+		println("simulo uno step andato bene")
+		replyTo step with stepdone : stepdone(ok)
+		}
+		
+		else {
+		
+		println("simulo uno step andato male")
+		
+		[# fail_step_when_10 = 0#]
+		
+		
+		replyTo step with stepfail : stepfail(rip)
+			
+		}
+	} 
+	
+	Goto s0
+	
+}
+
+
+QActor mapper_boundary context ctx_basic_robot{
+	
+	[# var NumStep = 0 #]
+	
+	State s0 initial {
+		println("		| mapper started")
+	}
+	
+	Goto robotStart
+	
+	State robotStart{
+		
+	[#
+	
+	unibo.kotlin.planner22Util.initAI()
+	unibo.kotlin.planner22Util.showMap()
+	unibo.kotlin.planner22Util.startTimer()
+	
+	NumStep++
+	
+	
+	unibo.kotlin.planner22Util.showCurrentRobotState()
+		
+	#]	
+		
+	}
+	
+	Goto doAheadMove
+	
+	State doAheadMove{
+		
+		request basic_robot -m step : step(100)
+		
+	}
+	Transition t_done whenReply stepdone -> stepDone
+					  whenReply stepfail -> stepFailed
+	
+	
+	State stepDone{
+		
+		printCurrentMessage
+		[#
+			unibo.kotlin.planner22Util.updateMap(  "w", "stepDone" )
+		#]
+	}
+	
+	State stepFailed{
+		
+		printCurrentMessage
+		[#
+		
+			println(unibo.kotlin.planner22Util.getMap())
+			
+		#]
+		
+		forward basic_robot -m cmd : cmd(s)
+	}
+	
+	State backPosDone{
+		
+		printCurrentMessage
+		[#
+			NumStep++
+			unibo.kotlin.planner22Util.updateMap(  "l", "turn" )
+		#]
+		
+		forward basic_robot -m cmd : cmd(l)
+	}
+	
+	Transition t0 
+}

@@ -1,0 +1,131 @@
+/*
+ * 
+ *  QUESTO È UN MODELLO (ISTANZA DI METAMODELLO QAK)
+ * 
+ * 	definito dall'ANALISITA DEL PROBLEMA
+ * 
+ * 
+ * ===============================================================================
+ */
+
+
+
+System basic_robot_system
+
+Dispatch 	cmd : cmd(MOVE)
+Request 	step : step( TIME )
+Reply		stepdone : stepdone(V)
+Reply		stepfail : stepfail(DT, REASON)
+Event		sonar	 : sonar(DISTANCE,NAME)
+
+
+Context ctx_basic_robot ip [host="127.0.0.1" port=8020]
+// Context ctx_gui ip [host="localhost" port=8021]
+
+
+QActor basic_robot context ctx_basic_robot{
+	
+	[# var fail_step_when_10  = 0 #]
+	State s0 initial {
+		
+		printCurrentMessage
+		
+		
+	}
+	Transition t0 whenMsg cmd -> handle_cmd
+				  whenRequest step -> handle_step
+	
+	
+	State handle_cmd {
+		
+		printCurrentMessage
+	}
+	
+	Goto s0
+	
+	
+	State handle_step {
+		
+		printCurrentMessage
+		
+		
+		[# fail_step_when_10 ++ #]
+		if [# fail_step_when_10 <10 #]
+		{
+		println("simulo uno step andato bene")
+		replyTo step with stepdone : stepdone(ok)
+		}
+		
+		else {
+		
+		println("simulo uno step andato male")
+		
+		[# fail_step_when_10 = 0#]
+		
+		replyTo step with stepfail : stepfail(rip)
+			
+		}
+	} 
+	
+	Goto s0
+	
+}
+
+QActor mock_console context ctx_basic_robot {
+	
+	State s0 initial {
+		
+		printCurrentMessage
+	}
+	Goto send_cmd
+	
+	State send_cmd {
+		println("	| invio cmd")
+		forward basic_robot -m cmd : cmd(l)
+		
+	}
+	
+	Goto send_step
+	
+	State send_step {
+		
+		println(" | invio msg")
+		
+		request basic_robot -m step : step (1000) 
+		
+	}
+	
+	Transition t0 whenReply stepdone -> handle_stepdone
+				  whenReply stepfail -> handle_stepfail
+	
+	
+	State handle_stepdone{
+		
+		printCurrentMessage
+		
+		println("	| stepdone")
+	}
+	
+	Goto s0
+	
+	State handle_stepfail {
+			printCurrentMessage
+		
+		println("	| stepfail")
+	}
+	Goto s0
+	
+}
+
+
+
+/*
+ * Per fare una demo, quali altri componenti devo introdurre
+ * 
+ * 1. Introduco un mock-object che simuli la console
+ * 
+ * Inviare un comando dal mock-object 
+ * 
+ * Introduco il POJO per il sup
+ * 
+ */

@@ -1,0 +1,65 @@
+
+/**
+ * 
+ *  ASSUNZIONE 1. il robot è nella posizione 0,0 e il front rivolto verso basso
+ * 
+ *  ASSUNZIONE 2. 
+ * 
+ * 
+ * PROGETTO: step avanti, fino al primo stepfail, ripeto per 4 volte e termino la planimetria
+ * 
+ * 
+ * ARCHITETTURA: il sistema è composto architetturalmente da 4 componenti
+ * - virtualRobot
+ * - !!!!! NO console  !!!!
+ * - mapperqak22 (proattivo)
+ * - robot_astratto 
+ * 
+ * 
+ * Robot astratto: traduzione dalle operazione che richiedo alle operazioni specifiche tecniche (del virtual robot)
+ * - fortunatamente ce l'ho 
+ * 
+ * /home/hscnokenju/Documents/issLab2022/unibo.basicrobot22
+ * 
+ * 
+ * ESIGENZA
+ * Man mano che mi muovo, devo costruire una rapprensentazione concettuale delle mosse effettuate -> mappa
+ * 
+ * 
+ * DEFINIRE MAPPA : una struttura dati, inizialmente vuota, per ogni mossa la mappa si aggiorna
+ * 
+ * 
+ */
+ 
+
+
+System mapperqak22_system
+
+Dispatch 	cmd : cmd(MOVE)
+Request 	step : step( TIME )
+Reply		stepdone : stepdone(V)
+Reply		stepfail : stepfail(DT, REASON)
+
+Context ctx_mapperqak22 ip [host="localhost" port=8030]
+Context ctxbasicrobot ip [host="127.0.0.1" port=8020]  
+
+
+
+ExternalQActor basicrobot context ctxbasicrobot
+
+
+
+
+QActor mapperqak22 context ctx_mapperqak22 {
+	State s0 initial {
+		
+		printCurrentMessage
+		[# unibo.kotlin.planner22Util.initAI() #]
+		
+		[# unibo.kotlin.planner22Util.showMap() #]
+		
+		request basicrobot -m step: step(100) 
+	}
+	
+	
+}
