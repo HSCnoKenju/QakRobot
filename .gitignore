@@ -148,3 +148,5 @@ modules.xml
 unibo.basicrobot22/src/it/unibo/*
 unibo.basicrobotraw/src/it/unibo/*
 unibo.basicrobotraw/.gradle/*
+
+unibo.basicrobotraw/*.pl
