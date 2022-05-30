@@ -143,3 +143,8 @@ modules.xml
 ############### ECLIPSE
 **/.settings/org.eclipse.buildship.core.prefs
 **/.settings/org.eclipse.jdt.core.prefs
+
+############## 
+unibo.basicrobot22/src/it/unibo/*
+unibo.basicrobotraw/src/it/unibo/*
+unibo.basicrobotraw/.gradle/*
