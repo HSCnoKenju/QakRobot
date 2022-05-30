@@ -1,0 +1,112 @@
+
+ 
+/**
+ * 
+ *  ASSUNZIONE 1. il robot è nella posizione 0,0 e il front rivolto verso basso
+ * 
+ *  ASSUNZIONE 2. 
+ * 
+ * 
+ * PROGETTO: step avanti, fino al primo stepfail, ripeto per 4 volte e termino la planimetria
+ * 
+ * 
+ * ARCHITETTURA: il sistema è composto architetturalmente da 4 componenti
+ * - virtualRobot
+ * - !!!!! NO console  !!!!
+ * - mapperqak22 (proattivo)
+ * - robot_astratto 
+ * 
+ * 
+ * Robot astratto: traduzione dalle operazione che richiedo alle operazioni specifiche tecniche (del virtual robot)
+ * - fortunatamente ce l'ho 
+ * 
+ * /home/hscnokenju/Documents/issLab2022/unibo.basicrobot22
+ * 
+ * 
+ * ESIGENZA
+ * Man mano che mi muovo, devo costruire una rapprensentazione concettuale delle mosse effettuate -> mappa
+ * 
+ * 
+ * DEFINIRE MAPPA : una struttura dati, inizialmente vuota, per ogni mossa la mappa si aggiorna
+ * 
+ * 
+ */
+System  boundary_mapper
+
+
+
+Dispatch cmd       	: cmd(MOVE)     
+Dispatch end       	: end(ARG)  
+ 
+Request step       : step( TIME )	
+Reply   stepdone   : stepdone(V)  
+Reply   stepfail   : stepfail(DURATION, CAUSE)
+   
+   
+Context ctxboundarymapper ip [host="127.0.0.1" port=8021]
+  
+Context ctxbasicrobot ip [host="localhost" port=8020]  
+ 
+
+ ExternalQActor basicrobot context ctxbasicrobot
+ 
+  
+ 
+ QActor mapperbasicboundary context ctxboundarymapper {
+ 	
+ 	
+ 	[#
+ 		var TurnCount = 4
+ 			
+ 	#]
+ 	
+ 	State s0 initial {
+ 		
+ 		printCurrentMessage
+ 		
+ 		[# unibo.kotlin.planner22Util.initAI() #]
+		
+		[# unibo.kotlin.planner22Util.showMap() #]
+		
+ 	}
+ 		Goto goingAhead
+ 	
+ 	
+ 	State goingAhead {
+
+		
+		request basicrobot -m step: step(300) 
+
+		println("waiting for step response------------------") 
+ 		
+ 	}
+ 	Transition t1 whenReply stepdone -> successUpdate
+ 				  whenReply stepfail -> turn
+ 	
+ 	
+ 	State successUpdate {
+ 		[# unibo.kotlin.planner22Util.doMove("w") #]
+ 		
+		[# unibo.kotlin.planner22Util.showMap() #]
+		
+		// updateResource
+ 	}
+ 	Goto goingAhead
+ 	
+ 	State turn {
+ 		
+ 		[# TurnCount-- #]
+ 		
+ 		forward basicrobot -m cmd : cmd(l)
+ 		[# unibo.kotlin.planner22Util.doMove("l") #]
+ 		println("TURN")
+ 	} Goto endWork if [# TurnCount==0#] else goingAhead
+ 
+ 	State endWork {
+ 		
+ 		println ("===================COMPLETE===================")
+ 		
+ 		[# unibo.kotlin.planner22Util.showMap() #]
+	}
+ 
+ }
