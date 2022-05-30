@@ -144,9 +144,8 @@ modules.xml
 **/.settings/org.eclipse.buildship.core.prefs
 **/.settings/org.eclipse.jdt.core.prefs
 
-############## 
+##############  QAK generation
 unibo.basicrobot22/src/it/unibo/*
 unibo.basicrobotraw/src/it/unibo/*
 unibo.basicrobotraw/.gradle/*
-
 unibo.basicrobotraw/*.pl

@@ -20,7 +20,7 @@ Event		sonar	 : sonar(DISTANCE,NAME)
 
 
 Context ctx_basic_robot ip [host="127.0.0.1" port=8020]
-// Context ctx_gui ip [host="localhost" port=8021]
+Context ctx_gui ip [host="localhost" port=8021]
 
 
 QActor basic_robot context ctx_basic_robot{
@@ -71,7 +71,7 @@ QActor basic_robot context ctx_basic_robot{
 	
 }
 
-QActor mock_console context ctx_basic_robot {
+QActor mock_console context ctx_gui {
 	
 	State s0 initial {
 		
@@ -116,6 +116,7 @@ QActor mock_console context ctx_basic_robot {
 	Goto s0
 	
 }
+
 
 
 
