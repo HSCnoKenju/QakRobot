@@ -1,0 +1,39 @@
+System -trace test
+
+
+Dispatch cmd       	: cmd(MOVE)     
+Dispatch end       	: end(ARG)  
+ 
+Request step       : step( TIME )	
+Reply   stepdone   : stepdone(V)  
+Reply   stepfail   : stepfail(DURATION, CAUSE)
+   
+   
+Context ctxtest ip [host="127.0.0.1" port=8021]
+  
+Context ctxbasicrobot ip [host="localhost" port=8020]  
+ 
+
+ ExternalQActor basicrobot context ctxbasicrobot
+ 
+ 
+ QActor test context ctxtest {
+ 	
+ 	State s0 initial {
+ 		
+ 		printCurrentMessage
+ 		
+ 		[# unibo.kotlin.planner22Util.initAI() #]
+		
+		[# unibo.kotlin.planner22Util.showMap() #]
+		
+		forward basicrobot -m cmd : cmd(w)
+		delay 1000
+		forward basicrobot -m cmd : cmd(w)
+		delay 1000
+		forward basicrobot -m cmd : cmd(w)
+		delay 1000
+		forward basicrobot -m cmd : cmd(w)
+ 	}
+ 	
+ }

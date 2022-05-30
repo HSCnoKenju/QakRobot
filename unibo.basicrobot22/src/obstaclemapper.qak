@@ -1,0 +1,309 @@
+System  -trace obstacle_mapper
+
+
+
+Dispatch cmd       	: cmd(MOVE)     
+Dispatch end       	: end(ARG)  
+ 
+Request step       : step( TIME )	
+Reply   stepdone   : stepdone(V)  
+Reply   stepfail   : stepfail(DURATION, CAUSE)
+   
+   
+Context ctxobstaclemapper ip [host="127.0.0.1" port=8021]
+  
+Context ctxbasicrobot ip [host="localhost" port=8020]  
+ 
+
+ ExternalQActor basicrobot context ctxbasicrobot
+ 
+ 
+ QActor mapper_with_obstacle context ctxobstaclemapper {
+ 	
+ 
+ 
+ 	[#
+ 		
+ 		var max_column_value = 0
+ 		var cur_column_value = 0
+ 	
+ 		
+ 		var max_column_index = 0
+ 		var cur_column_index = 0
+ 	
+ 	#]
+ 	
+ 	State s0 initial {
+ 		printCurrentMessage
+ 		[# unibo.kotlin.planner22Util.initAI() #]
+		
+		[# unibo.kotlin.planner22Util.showMap() #]
+		
+		delay 300
+		
+		
+}
+Goto moveDown // separo IL PRIMO PASSO così da poter gestire il double turn and step
+
+ State moveDown{
+ 	
+		request basicrobot -m step: step(300) 
+
+		println("waiting for step response------------------") 
+		
+ 	
+ 	}
+ 	
+ 	Transition t1 whenReply stepdone -> goingDown
+ 				  whenReply stepfail -> lookingUp
+ 	
+ 	
+ 	State goingDown {
+ 		
+ 		printCurrentMessage
+ 		
+ 		[# cur_column_value ++
+ 		
+ 			println("column value $cur_column_value")	
+ 		#]
+ 		delay 300
+ 		[# unibo.kotlin.planner22Util.doMove("w") #]
+ 		
+		[# unibo.kotlin.planner22Util.showMap() #]
+ 		
+		request basicrobot -m step: step(300) 
+
+		println("waiting for step response------------------") 
+ 	}
+ 	
+ 	Transition t2 whenReply stepdone -> goingDown
+ 				  whenReply stepfail -> lookingUp
+ 				  
+ 	State lookingUp {
+ 		printCurrentMessage
+ 		
+ 		[# if (cur_column_value > max_column_value){
+ 			max_column_value = cur_column_value
+ 			max_column_index = cur_column_index
+ 		}#]
+ 		
+ 		
+ 		forward basicrobot -m cmd : cmd(l)
+ 		forward basicrobot -m cmd : cmd(l)
+ 		
+ 		[# unibo.kotlin.planner22Util.doMove("l") #]
+ 		[# unibo.kotlin.planner22Util.doMove("l") #]
+ 		
+ 	}
+ 	
+ 	Goto returnRow0
+ 	
+ 	
+ 	State returnRow0{
+ 		println("=========================================================================================")
+ 		printCurrentMessage
+ 		
+ 		[# println("column value $cur_column_value") #]
+ 		[# for (i in 1..cur_column_value ) {#]
+ 			forward basicrobot -m cmd : cmd(w)
+ 			delay 1000	
+ 		[# unibo.kotlin.planner22Util.doMove("w") #]
+ 		[#}#]
+ 		
+ 		
+ 	}
+ 	Goto changeColumn
+ 	
+ 	State changeColumn {
+ 		
+ 		[#
+ 		
+ 			cur_column_value = 0
+ 			cur_column_index ++	
+ 		#]
+ 		forward basicrobot -m cmd : cmd(r)
+ 		[# unibo.kotlin.planner22Util.doMove("r") #]
+
+ 		request basicrobot -m step: step(300) 
+ 		
+ 		
+ 	
+ 	}
+ 	Transition t3 whenReply stepdone -> finishChange
+ 				  whenReply stepfail -> endPhase_1
+ 				  
+ 	State finishChange {
+ 		
+ 		forward basicrobot -m cmd : cmd(r) // anche dopo aver sbattuto, mi posiziono con verso SUD
+ 	
+ 		
+ 		[# unibo.kotlin.planner22Util.doMove("w") #]
+ 		[# unibo.kotlin.planner22Util.doMove("r") #]
+ 	}
+ 	
+ Goto moveDown
+ 	
+ 				  
+ 	State endPhase_1 {
+ 		
+ 		printCurrentMessage
+ 		
+ 		delay 1000
+ 		
+ 		[# cur_column_index --	 #] // annullo l'ultimo incremento della colonna, sbagliata causa stepfail
+ 		forward basicrobot -m cmd : cmd(r) // direzione OVEST
+ 		
+ 		
+ 		[# unibo.kotlin.planner22Util.doMove("r") #]
+ 	}
+ 	Goto longestColumn
+ 	
+ 	State longestColumn {
+ 		[# for (i in 1..(cur_column_index - max_column_index)) {#]
+ 			forward basicrobot -m cmd : cmd(w)
+ 			delay 300
+ 		[#}#]
+ 	}
+ 	Goto lastRow
+ 	
+ 	State lastRow{
+ 		forward basicrobot -m cmd : cmd(l) // direzione SUD
+ 		[# for (i in 1..max_column_value) {#]
+ 			forward basicrobot -m cmd : cmd(w)
+ 			delay 300
+ 			
+ 		[#}#]
+ 		
+ 		[#
+ 			unibo.kotlin.planner22Util.setGoal(max_column_index,max_column_value)
+ 			unibo.kotlin.planner22Util.doPlan()
+ 		
+ 			var move = unibo.kotlin.planner22Util.getNextPlannedMove()
+        	while ( move.isNotEmpty()) {
+            	unibo.kotlin.planner22Util.doMove( move )
+				move = unibo.kotlin.planner22Util.getNextPlannedMove()
+        	}
+        	
+        	unibo.kotlin.planner22Util.showMap()
+ 			
+ 		#]
+ 		println("======sulla mappa dovre essere all'ultima riga============")
+ 		
+ 		delay 1000
+ 	} 
+ 	Goto startOfLastRow
+ 	
+ 	State startOfLastRow{
+ 		forward basicrobot -m cmd : cmd(r) // direzione OVEST
+ 		
+ 		[# unibo.kotlin.planner22Util.doMove("r") #]
+ 		
+ 		[# for (i in 1..max_column_index) {#] // sono partito dalla colonna più "lunga", partendo dall'alto ho trovato ostacoli dopo il massimo numero di step
+ 			forward basicrobot -m cmd : cmd(w)
+ 			delay 300
+ 			
+ 		[# unibo.kotlin.planner22Util.doMove("w") #]
+ 			
+ 		[#}#]
+ 		
+ 		forward basicrobot -m cmd : cmd(r) // direzione NORTH pos(0,last)
+ 		
+ 		[# unibo.kotlin.planner22Util.doMove("r") #]
+ 		println("=============DIREZIONE NORTH, POS(0,last) ===============")
+ 		
+ 	}
+ 	
+// 	Goto moveUp
+ 	
+ 	
+// 	
+// 	
+// State moveUp{
+// 	
+//		request basicrobot -m step: step(300) 
+//
+//		println("waiting for step response------------------") 
+//		
+// 	
+// 	}
+// 	
+// 	Transition t1 whenReply stepdone -> goingUp
+// 				  whenReply stepfail -> lookingDown
+// 	
+// 	
+// 	State goingUp {
+// 		
+// 		
+// 		[# unibo.kotlin.planner22Util.doMove("w") #]
+// 		
+//		[# unibo.kotlin.planner22Util.showMap() #]
+// 		
+//		request basicrobot -m step: step(300) 
+//
+//		println("waiting for step response------------------") 
+// 	}
+// 	
+// 	Transition t2 whenReply stepdone -> goingUp
+// 				  whenReply stepfail -> lookingDown
+// 				  
+// 	State lookingDown {
+// 		
+// 		[# if (cur_column_value > max_column_value){
+// 			max_column_value = cur_column_value
+// 			max_column_index = cur_column_index
+// 		}#]
+// 		
+// 		
+// 		forward basicrobot -m cmd : cmd(l)
+// 		forward basicrobot -m cmd : cmd(l)
+// 		
+// 		[# unibo.kotlin.planner22Util.doMove("l") #]
+// 		[# unibo.kotlin.planner22Util.doMove("l") #]
+// 		
+// 	}
+// 	
+// 	Goto returnRowLast
+// 	
+// 	
+// 	State returnRowLast{
+// 		[# for (i in 1..cur_column_value ) {#]
+// 			forward basicrobot -m cmd : cmd(w)
+// 			
+// 		[# unibo.kotlin.planner22Util.doMove("w") #]
+// 		[#}#]
+// 	}
+// 	Goto changeColumn_2
+// 	
+// 	State changeColumn_2 {
+// 		
+// 		[#
+// 		
+// 			cur_column_value = 0
+// 			cur_column_index ++	
+// 		#]
+// 		forward basicrobot -m cmd : cmd(r)
+// 		request basicrobot -m step: step(300) 
+// 		forward basicrobot -m cmd : cmd(r) // anche dopo aver sbattuto, mi posiziono con verso SUD
+// 	
+// 		
+// 		[# unibo.kotlin.planner22Util.doMove("r") #]
+// 		[# unibo.kotlin.planner22Util.doMove("w") #]
+// 		[# unibo.kotlin.planner22Util.doMove("r") #]
+// 	
+// 	}
+// 	Transition t3 whenReply stepdone -> moveUp
+// 				  whenReply stepfail -> endPhase_2
+// 				  
+// 				  
+// 	State endPhase_2 {
+// 		
+// 		[# cur_column_index --	 #] // annullo l'ultimo incremento della colonna, sbagliata causa stepfail
+// 		forward basicrobot -m cmd : cmd(r) // direzione OVEST
+// 		
+// 		
+// 		[# unibo.kotlin.planner22Util.doMove("r") #]
+// 	}
+// 	
+// 	
+ }
+ 	
