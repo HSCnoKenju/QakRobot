@@ -1,4 +1,4 @@
-System  -trace obstacle_mapper
+System   obstacle_mapper   
 
 
 
@@ -30,6 +30,12 @@ Context ctxbasicrobot ip [host="localhost" port=8020]
  		
  		var max_column_index = 0
  		var cur_column_index = 0
+ 		
+ 		var done_return = 0
+ 		
+ 		var done_back = 0
+ 		
+ 		var done_head = 0
  	
  	#]
  	
@@ -46,6 +52,7 @@ Context ctxbasicrobot ip [host="localhost" port=8020]
 Goto moveDown // separo IL PRIMO PASSO così da poter gestire il double turn and step
 
  State moveDown{
+ 	printCurrentMessage
  	
 		request basicrobot -m step: step(300) 
 
@@ -88,41 +95,64 @@ Goto moveDown // separo IL PRIMO PASSO così da poter gestire il double turn and
  		}#]
  		
  		
+ 		[# unibo.kotlin.planner22Util.updateMapObstacleOnCurrentDirection()#]
+
  		forward basicrobot -m cmd : cmd(l)
+ 		delay 300
  		forward basicrobot -m cmd : cmd(l)
  		
  		[# unibo.kotlin.planner22Util.doMove("l") #]
  		[# unibo.kotlin.planner22Util.doMove("l") #]
+ 		
+ 		request basicrobot -m step: step(300)
  		
  	}
  	
- 	Goto returnRow0
+ 	Transition t2 whenReply stepdone -> returnRow0
  	
  	
  	State returnRow0{
  		println("=========================================================================================")
  		printCurrentMessage
  		
- 		[# println("column value $cur_column_value") #]
- 		[# for (i in 1..cur_column_value ) {#]
- 			forward basicrobot -m cmd : cmd(w)
- 			delay 1000	
- 		[# unibo.kotlin.planner22Util.doMove("w") #]
- 		[#}#]
+		 		
+// 		[# unibo.kotlin.planner22Util.doMove("w") #]
+// 		[# unibo.kotlin.planner22Util.showMap() #]
+// 		[# done_return++ #]
+// 		[# println("done_return $done_return column value $cur_column_value") #]
+ 		request basicrobot -m step: step(300) 
+ 		
  		
  		
  	}
- 	Goto changeColumn
- 	
+// 	Transition t3  whenReply stepdone and [#done_return == cur_column_value#] -> changeColumn 
+// 				   whenReply stepdone and [#done_return < cur_column_value#] -> returnRow0
+// 				   whenReply stepfail and [#done_return == cur_column_value#] -> changeColumn 
+// 				   whenReply stepfail -> error
+Transition t3  whenReply stepdone -> returnRow0
+			   whenReply stepfail -> changeColumn
+ 	 
  	State changeColumn {
  		
- 		[#
+ 		printCurrentMessage
  		
+ 		
+ 		[# for (i in 1..cur_column_value) {#]
+ 			[# unibo.kotlin.planner22Util.doMove("w") #]
+ 		[#}#]
+ 		
+ 		
+ 		[# unibo.kotlin.planner22Util.showMap() #]
+ 		
+ 		[#
+ 			done_return = 0
  			cur_column_value = 0
  			cur_column_index ++	
  		#]
  		forward basicrobot -m cmd : cmd(r)
  		[# unibo.kotlin.planner22Util.doMove("r") #]
+ 		
+ 		delay 300
 
  		request basicrobot -m step: step(300) 
  		
@@ -133,47 +163,91 @@ Goto moveDown // separo IL PRIMO PASSO così da poter gestire il double turn and
  				  whenReply stepfail -> endPhase_1
  				  
  	State finishChange {
+ 		printCurrentMessage
  		
+ 		[# unibo.kotlin.planner22Util.doMove("w") #]
+
  		forward basicrobot -m cmd : cmd(r) // anche dopo aver sbattuto, mi posiziono con verso SUD
  	
  		
- 		[# unibo.kotlin.planner22Util.doMove("w") #]
  		[# unibo.kotlin.planner22Util.doMove("r") #]
  	}
  	
  Goto moveDown
  	
  				  
- 	State endPhase_1 {
+ State endPhase_1 {
  		
  		printCurrentMessage
  		
- 		delay 1000
+ 		delay 2000
+ 		println("")
+ 		println("END PHASE 1")
+ 		println("")
+ 		
+ 		forward basicrobot -m cmd : cmd(r) // anche dopo aver sbattuto, mi posiziono con verso SUD
+ 		
+ 		delay 300
+ 		
+ 		[# unibo.kotlin.planner22Util.doMove("r") #]
  		
  		[# cur_column_index --	 #] // annullo l'ultimo incremento della colonna, sbagliata causa stepfail
  		forward basicrobot -m cmd : cmd(r) // direzione OVEST
  		
+ 		delay 300
  		
  		[# unibo.kotlin.planner22Util.doMove("r") #]
- 	}
- 	Goto longestColumn
+ }
+ Goto longestColumn
+ 	
+ 	
+ 	
+ 	
+ 	
  	
  	State longestColumn {
- 		[# for (i in 1..(cur_column_index - max_column_index)) {#]
- 			forward basicrobot -m cmd : cmd(w)
- 			delay 300
- 		[#}#]
+ 		
+ 		printCurrentMessage
+ 		
+ 			request basicrobot -m step: step(300) 
+ 			
+ 			[# done_back++#]
+ 	}
+ 	Transition t4 whenReply stepdone and [# done_back < (cur_column_index - max_column_index)#] -> longestColumn
+ 				  whenReply stepdone and [# done_back == (cur_column_index - max_column_index)#] -> turnleft
+ 				  whenReply stepfail ->  error
+ 	
+ 	
+ 	
+ 	State turnleft {
+ 	
+ 		printCurrentMessage
+ 		forward basicrobot -m cmd : cmd(l) // direzione SUD
+ 		delay 300
+ 		
  	}
  	Goto lastRow
  	
+	
  	State lastRow{
- 		forward basicrobot -m cmd : cmd(l) // direzione SUD
- 		[# for (i in 1..max_column_value) {#]
- 			forward basicrobot -m cmd : cmd(w)
- 			delay 300
- 			
- 		[#}#]
  		
+ 		request basicrobot -m step: step(300) 
+ 			
+ 			//[# done_head++#]
+ 		
+// 		
+// 		
+ 	
+ 	} 
+ 	Transition t4 whenReply stepdone -> lastRow
+ 				  whenReply stepfail ->  calibrateMap
+ 	
+ 
+ 	
+ 	
+ 	State calibrateMap{
+ 		
+ 		printCurrentMessage
  		[#
  			unibo.kotlin.planner22Util.setGoal(max_column_index,max_column_value)
  			unibo.kotlin.planner22Util.doPlan()
@@ -187,31 +261,59 @@ Goto moveDown // separo IL PRIMO PASSO così da poter gestire il double turn and
         	unibo.kotlin.planner22Util.showMap()
  			
  		#]
- 		println("======sulla mappa dovre essere all'ultima riga============")
- 		
- 		delay 1000
- 	} 
- 	Goto startOfLastRow
- 	
- 	State startOfLastRow{
  		forward basicrobot -m cmd : cmd(r) // direzione OVEST
+ 		
+ 		delay 300
  		
  		[# unibo.kotlin.planner22Util.doMove("r") #]
  		
- 		[# for (i in 1..max_column_index) {#] // sono partito dalla colonna più "lunga", partendo dall'alto ho trovato ostacoli dopo il massimo numero di step
- 			forward basicrobot -m cmd : cmd(w)
- 			delay 300
+ 	}
+ 	
+ 	
+ 	Goto startOfLastRow
+ 	
+ 	
+ 	
+ 	
+ 	State startOfLastRow{
+ 		
+ 		printCurrentMessage
+ 		
+ 		request basicrobot -m step: step(300) 
+ 		
+ 		
+ 		
+ 	}
+ 	Transition t4 whenReply stepdone -> startOfLastRow
+ 				  whenReply stepfail ->  down_look_up
+ 	
+ 	
+ 
+ State down_look_up {
+ 
+ printCurrentMessage	
+ 			
+ 			//[# done_head++#]
+ 		
+// 		
+// 		
+
+[# for (i in 1..max_column_index) {#] // sono partito dalla colonna più "lunga", partendo dall'alto ho trovato ostacoli dopo il massimo numero di step
  			
  		[# unibo.kotlin.planner22Util.doMove("w") #]
  			
  		[#}#]
- 		
- 		forward basicrobot -m cmd : cmd(r) // direzione NORTH pos(0,last)
+
+		forward basicrobot -m cmd : cmd(r) // direzione NORTH pos(0,last)
+		delay 300
  		
  		[# unibo.kotlin.planner22Util.doMove("r") #]
  		println("=============DIREZIONE NORTH, POS(0,last) ===============")
  		
- 	}
+ 	
+ 	} 
+ 	
+ 
  	
 // 	Goto moveUp
  	
@@ -305,5 +407,15 @@ Goto moveDown // separo IL PRIMO PASSO così da poter gestire il double turn and
 // 	}
 // 	
 // 	
+
+State error {
+	printCurrentMessage
+	println("")
+	println("")
+	println("")
+	println("================Error================")
+	println("")
+	println("")
+}
  }
  	
