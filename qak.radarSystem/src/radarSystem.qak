@@ -1,0 +1,324 @@
+System radarsystem 
+
+
+Dispatch cmdLed : cmd(COMAND)  // turnOn turnOff
+
+Request getState : req(getState) 
+Reply   ledState : ledState(STATE)
+
+
+Dispatch cmdDisplay : cmd(COMAND, VALUE) //  update
+
+Request getCurDistance : req(getCurDistance)
+Reply displayDistance : displayDistance(DISTANCE)
+
+
+Dispatch cmdSonar : cmd(COMAND) // activate deactivate 
+
+Request isActive : req(isActive)
+Reply sonarActive : sonarActive(STATE)
+
+Event sonar : sonar(DISTANCE)
+
+
+Context ctx_monolitic_radarsystem ip [host="localhost" port=8111]
+
+
+
+QActor controller context ctx_monolitic_radarsystem {
+	
+	
+	[#
+		
+		val DLimit = 50
+		
+	
+	#]
+	
+	
+	State s0 initial {
+		
+		println("CONTROLLER | started ")
+		
+		forward sonar -m cmdSonar : cmd(activate)
+		
+		delay 200
+	}
+	
+	Goto waitSonar
+	
+	State waitSonar {
+		
+		println("CONTROLLER | idle ")
+	}
+	Transition t4 whenEvent sonar -> userCase1
+	
+	
+	State userCase1 {
+		
+		printCurrentMessage
+		
+		onMsg  ( sonar : sonar(DISTANCE) ) { 
+			
+			[#
+			
+			   var Load = payloadArg(0).toInt()
+			
+				
+			#]
+			
+		forward display -m cmdDisplay : cmd(update,$Load)
+		
+		[#
+		
+			if (Load > DLimit) 		
+				
+		#]
+		
+		
+			forward led -m cmdLed : cmd(turnOn)
+		[#
+		
+			else 		
+				
+		#]
+			
+			forward led -m cmdLed : cmd(turnOff)
+			
+			
+		
+		/* Non ho trovato altro modo per terminare la generazione del sonar*/
+		
+		[#
+			if (Load <= 0)
+			
+		#] 
+			
+			forward sonar -m cmdSonar : cmd(deactivate) 
+		}
+		
+	}
+	
+	Goto waitSonar
+}
+
+
+
+QActor sonar context ctx_monolitic_radarsystem {
+	
+	[#
+		
+		var Active = false
+		
+		var SimDistance = 90
+	
+	#]
+	
+	
+	
+	State s0 initial {
+		
+		
+		
+		println("SONAR | started ")
+	}
+	
+	Goto waitingMessages
+	
+	State waitingMessages{
+		
+		
+		println("SONAR | idle ; waiting")
+	}
+	
+	Transition t3 whenMsg cmdSonar -> parseCmd
+				  whenRequest  isActive -> handleIsActive
+	
+	
+	State handleIsActive {
+		
+		//printCurrentMessage
+		
+		replyTo isActive with sonarActive : sonarActive( $Active )
+		
+	}
+	
+	Goto emitDistance if [# Active #] else waitingMessages
+	
+	State parseCmd {
+		
+		//printCurrentMessage
+		onMsg(cmdSonar : cmd(COMAND)) {
+			
+			[#
+			
+				if (payloadArg(0).equals("activate"))
+					
+					Active = true
+				
+				else if (payloadArg(0).equals("deactivate"))
+					
+					Active = false
+				
+				
+			#]
+		println ("SONAR | EXEC, CURRENT STATE = $Active")
+		}
+	}
+	
+	Goto emitDistance if [# Active #] else waitingMessages
+	
+	
+	State emitDistance {
+		
+		//printCurrentMessage
+		
+		[# if (SimDistance >=0) #]
+		emit sonar : sonar($SimDistance)
+		
+		println ("===============================")
+		println("")
+		println("")
+		println ("SONAR | EMIT an EVENT = $SimDistance")
+
+		[# SimDistance = SimDistance - 5#]
+		
+		
+	}
+	
+	Transition t3 
+				  whenTime 500  -> emitDistance  
+				  whenMsg cmdSonar -> parseCmd
+				  whenRequest  isActive -> handleIsActive
+}
+
+
+QActor led context ctx_monolitic_radarsystem {
+	
+	[#
+		var Active = false	
+		
+		
+	#]
+	
+	State s0 initial {
+		
+		
+		println("LED | START ")
+	
+		
+		
+	}
+	Goto waitingMessages
+	
+	
+	State waitingMessages{
+		
+		
+		println("LED | waiting ")
+	}
+	Transition t1 whenMsg cmdLed ->  parseCmd
+				  whenRequest getState -> handleGetState
+	
+	
+	State handleGetState {
+		
+		//printCurrentMessage
+		replyTo getState with ledState : ledState( $Active )
+	}
+	Goto waitingMessages
+	
+	State parseCmd{
+		//printCurrentMessage
+		
+		onMsg(cmdLed : cmd(COMAND)) {
+			
+			[#
+			
+				if (payloadArg(0).equals("turnOn"))
+					
+					Active = true
+				
+				else if (payloadArg(0).equals("turnOff"))
+					
+					Active = false
+				
+				else
+				{
+					
+				}
+					 
+				
+			#]
+		println ("LED | EXEC, CURRENT STATE = $Active")
+		}
+		
+		
+	}
+	Goto waitingMessages
+	
+}
+
+
+QActor display context ctx_monolitic_radarsystem {
+	
+	
+	
+	[#
+	
+	var Distance = 90
+	
+	#]
+	
+	State s0 initial{
+		
+		println("DISPLAY | START")
+		
+	}
+	
+	Goto waitMessages
+	
+	
+	State waitMessages{
+		
+		println("DISPLAY | WAITING")
+	}
+	Transition t2 whenMsg cmdDisplay -> parseCmd
+				  whenRequest getCurDistance -> handleGetCurDistance
+	
+	
+	State handleGetCurDistance {
+		
+		//printCurrentMessage
+		
+		replyTo getCurDistance with  displayDistance : displayDistance($Distance)
+		
+	}
+	Goto waitMessages
+	
+	State parseCmd {
+		
+		//printCurrentMessage
+		
+		onMsg(cmdDisplay : cmd(COMAND, VALUE)) {
+			
+			[#
+				
+				//println("0 ${payloadArg(0)} 1 ${payloadArg(1)} ")
+			
+				if (payloadArg(0).equals("update"))
+					
+					Distance = payloadArg(1).toInt()
+			
+			#]
+			
+			println("DISPLAY | UPDATED, current distance = $Distance")
+		}
+		
+	}
+	Goto waitMessages
+	
+	
+	
+	
+}

@@ -150,3 +150,7 @@ unibo.basicrobotraw/src/it/unibo/*
 unibo.basicrobotraw/.gradle/*
 unibo.basicrobotraw/*.pl
 unibo.basicrobot22/*.pl
+qak.radarSystem/build2022.gradle
+qak.radarSystem/*.pl
+qak.radarSystem/src/it/unibo/*
+qak.radarSystem/src/it/unibo/sonar/Sonar.kt
